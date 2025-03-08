@@ -1,8 +1,11 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # ✅ Import CORS
 from firebase_config import db  # Import Firestore
 from ussd_handler import process_ussd_request  # Import the USSD logic
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})  # ✅ Allow requests from any origin
+
 
 @app.route("/add_user", methods=["POST"])
 def add_user():
@@ -19,6 +22,15 @@ def add_user():
 
     return jsonify({"message": "User added successfully"}), 200
 
+
+@app.route("/get_users", methods=["GET"])
+def get_users():
+    """Fetch all users from Firestore."""
+    users_ref = db.collection("users").stream()
+    users_list = [{"phone_number": user.id, **user.to_dict()} for user in users_ref]
+
+    return jsonify(users_list), 200
+
 @app.route("/get_user/<phone_number>", methods=["GET"])
 def get_user(phone_number):
     """Retrieves user details from Firestore."""
@@ -31,16 +43,24 @@ def get_user(phone_number):
         return jsonify({"error": "User not found"}), 404
 
 
+
 @app.route("/ussd", methods=["POST"])
 def ussd():
-    """Handles incoming USSD requests and interacts with Firestore"""
+    """Handles USSD requests and logs user interactions."""
+    if not request.is_json:  # ✅ Ensure request is JSON
+        return jsonify({"error": "Invalid Content-Type. Use application/json"}), 415
     
-    phone_number = request.form.get("phoneNumber")
-    text = request.form.get("text", "")
+    data = request.get_json()  # ✅ Properly parse JSON
+    phone_number = data.get("phone_number")
+    user_input = data.get("user_input", "")  # Default empty input
 
-    response_text = process_ussd_request(text, phone_number)
+    if not phone_number:
+        return jsonify({"error": "Phone number is required"}), 400
 
-    return response_text, 200  # Return response to the USSD request
+    response = process_ussd_request(user_input, phone_number)
+
+    return jsonify({"message": response})
+
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -3,18 +3,18 @@ from firebase_admin import credentials, firestore
 import os
 import json
 
-# Load Firebase credentials from environment variable
-firebase_cred_json = os.getenv("FIREBASE_CREDENTIALS")
+# ✅ Use a direct file path instead of an environment variable
+FIREBASE_CREDENTIALS_PATH = "serviceAccountKey.json"
 
-if firebase_cred_json:
-    cred_dict = json.loads(firebase_cred_json)
-    cred = credentials.Certificate(cred_dict)
-    firebase_admin.initialize_app(cred)
-else:
-    raise ValueError("Firebase credentials not found. Ensure FIREBASE_CREDENTIALS is set.")
+if not os.path.exists(FIREBASE_CREDENTIALS_PATH):
+    raise ValueError("Firebase credentials file is missing. Please check serviceAccountKey.json.")
 
-# Initialize Firestore database
+# ✅ Load the Firebase credentials
+cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+firebase_admin.initialize_app(cred)
+
+# ✅ Initialize Firestore database
 db = firestore.client()
-users_collection = db.collection("users")  # ✅ Add this line
+users_collection = db.collection("users")  # ✅ Keep this line
 
 print("✅ Firestore is working! Database connected.")
