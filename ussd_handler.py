@@ -1,9 +1,9 @@
-from firebase_config import users_collection
+from firebase_config import db  # Import Firestore database
 
 def process_ussd_request(user_input, phone_number):
-    """Handles USSD requests and logs interactions in Firebase"""
+    """Handles USSD requests and logs interactions in Firestore"""
 
-    user_ref = users_collection.document(phone_number)
+    user_ref = db.collection("users").document(phone_number)  # ✅ Use db.collection
     user = user_ref.get()
 
     if not user.exists:

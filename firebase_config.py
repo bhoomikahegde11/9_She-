@@ -1,15 +1,20 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
+import os
+import json
 
-# Initialize Firebase
-cred = credentials.Certificate("serviceAccountKey.json")
-firebase_admin.initialize_app(cred)
+# Load Firebase credentials from environment variable
+firebase_cred_json = os.getenv("FIREBASE_CREDENTIALS")
 
-# Firestore instance
+if firebase_cred_json:
+    cred_dict = json.loads(firebase_cred_json)
+    cred = credentials.Certificate(cred_dict)
+    firebase_admin.initialize_app(cred)
+else:
+    raise ValueError("Firebase credentials not found. Ensure FIREBASE_CREDENTIALS is set.")
+
+# Initialize Firestore database
 db = firestore.client()
+users_collection = db.collection("users")  # ✅ Add this line
 
-# Test Firestore Write
-test_doc_ref = db.collection("test_collection").document("test_document")
-test_doc_ref.set({"message": "Hello from Firestore!"})
-
-print("✅ Firestore is working! Data written successfully.")
+print("✅ Firestore is working! Database connected.")
