@@ -61,6 +61,18 @@ def ussd():
 
     return jsonify({"message": response})
 
+@app.route("/get_user_activity/<phone_number>", methods=["GET"])
+def get_user_activity(phone_number):
+    """Retrieve full activity log of a user."""
+    user_ref = db.collection("users").document(phone_number)
+    user = user_ref.get()
+
+    if user.exists:
+        user_data = user.to_dict()
+        return jsonify(user_data.get("activity_log", [])), 200
+    else:
+        return jsonify({"error": "User not found"}), 404
+
 
 if __name__ == "__main__":
     app.run(debug=True)

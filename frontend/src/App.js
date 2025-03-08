@@ -1,114 +1,88 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import "bootstrap/dist/css/bootstrap.min.css";  // ✅ Import Bootstrap
+import "bootstrap/dist/css/bootstrap.min.css"; // ✅ Import Bootstrap
 
 function App() {
-  const [users, setUsers] = useState([]);  // ✅ Stores full user list
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [user, setUser] = useState(null);
-  const [error, setError] = useState("");
+  const [users, setUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [activityLog, setActivityLog] = useState([]);
 
-  // ✅ Fetch all users on page load
+  // Fetch all users
   useEffect(() => {
-    axios
-      .get("http://127.0.0.1:5000/get_users")
-      .then((response) => {
-        setUsers(response.data);
-      })
-      .catch(() => {
-        setError("Failed to fetch users.");
-      });
+    axios.get("http://127.0.0.1:5000/get_users") 
+      .then(response => setUsers(response.data))
+      .catch(error => console.error("Error fetching users:", error));
   }, []);
 
-  // ✅ Fetch a specific user
-  const fetchUser = () => {
-    if (!phoneNumber.trim()) {
-      setError("Please enter a valid phone number.");
-      return;
-    }
-
-    axios
-      .get(`http://127.0.0.1:5000/get_user/${phoneNumber}`)
-      .then((response) => {
-        setUser(response.data);
-        setError("");  // Clear any previous errors
+  // Fetch user activity log
+  const fetchActivityLog = (phoneNumber) => {
+    axios.get(`http://127.0.0.1:5000/get_user_activity/${phoneNumber}`)
+      .then(response => {
+        setSelectedUser(phoneNumber);
+        setActivityLog(response.data);
       })
-      .catch(() => {
-        setUser(null);
-        setError("User not found or server error.");
-      });
+      .catch(error => console.error("Error fetching user activity:", error));
   };
 
   return (
     <div className="container mt-4">
       <h1 className="text-center mb-4">USSD Users Dashboard</h1>
+      
+      {/* Users Table */}
+      <table className="table table-bordered table-hover">
+        <thead className="table-dark">
+          <tr>
+            <th>Phone Number</th>
+            <th>View Activity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((user, index) => (
+            <tr key={index}>
+              <td>{user.phone_number}</td>
+              <td>
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => fetchActivityLog(user.phone_number)}
+                >
+                  View Activity
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-      {/* ✅ Input to search for a specific user */}
-      <div className="mb-3">
-        <input
-          type="text"
-          className="form-control"
-          placeholder="Enter Phone Number"
-          value={phoneNumber}
-          onChange={(e) => setPhoneNumber(e.target.value)}
-        />
-        <button className="btn btn-primary mt-2" onClick={fetchUser}>
-          Fetch User
-        </button>
-      </div>
-
-      {/* ✅ Show error message if any */}
-      {error && <div className="alert alert-danger">{error}</div>}
-
-      {/* ✅ Display Specific User Data if Found */}
-      {user && (
-        <div className="mt-4">
-          <h4>Selected User</h4>
-          <table className="table table-bordered">
-            <thead className="table-dark">
+      {/* Activity Log Table */}
+      {selectedUser && (
+        <div className="mt-5">
+          <h3>Activity Log for {selectedUser}</h3>
+          <table className="table table-striped">
+            <thead className="table-light">
               <tr>
-                <th>Phone Number</th>
-                <th>Last Menu Accessed</th>
+                <th>Timestamp</th>
+                <th>User Input</th>
+                <th>Menu Displayed</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>{user.phone_number || phoneNumber}</td>
-                <td>{user.last_menu_accessed || "N/A"}</td>
-              </tr>
+              {activityLog.length > 0 ? (
+                activityLog.map((log, index) => (
+                  <tr key={index}>
+                    <td>{log.timestamp}</td>
+                    <td>{log.user_input}</td>
+                    <td>{log.menu_displayed}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="3" className="text-center">No activity found</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       )}
-
-      {/* ✅ Display Full List of Users */}
-      <div className="mt-4">
-        <h4>All Users</h4>
-        <table className="table table-bordered table-hover">
-          <thead className="table-dark">
-            <tr>
-              <th>Phone Number</th>
-              <th>Last Menu Accessed</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.length > 0 ? (
-              users.map((user, index) => (
-                <tr key={index}>
-                  <td>{user.phone_number}</td>
-                  <td>{user.last_menu_accessed}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="2" className="text-center">
-                  No users found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }

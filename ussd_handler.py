@@ -1,72 +1,41 @@
 from firebase_config import db  # Import Firestore database
+from datetime import datetime  # For timestamps
+from google.cloud.firestore import ArrayUnion
 
 def process_ussd_request(user_input, phone_number):
-    """Handles USSD requests and logs interactions in Firestore"""
+    """Handles USSD requests and logs all interactions in Firestore"""
 
-    user_ref = db.collection("users").document(phone_number)  # ✅ Use db.collection
+    user_ref = db.collection("users").document(phone_number)
     user = user_ref.get()
 
-    # If user doesn't exist, create a new entry
+    # If user doesn't exist, create a new entry with an empty activity log
     if not user.exists:
-        user_ref.set({"phone_number": phone_number, "last_menu_accessed": "Welcome"})
+        user_ref.set({"phone_number": phone_number, "activity_log": []})
 
-    # Root menu
-    if user_input == "":  # First time user dials USSD
-        return ("Welcome to Rural Rise!\n"
-                "1. Financial Literacy\n"
-                "2. Government Aid\n"
-                "3. UPI Guide\n"
-                "4. Exit")
+    # USSD Menu
+    menu_options = {
+        "": "Welcome to Rural Rise!\n1. Financial Literacy\n2. Govt Aid\n3. UPI Guide\n4. Exit",
+        "1": "Financial Literacy Topics:\n1. Saving Money\n2. Budgeting\n3. Digital Banking\n0. Back",
+        "1*1": "Saving Money Tips:\n- Save 20% of income\n- Invest in low-risk savings\n0. Back",
+        "2": "Govt Aid Programs:\n1. PM Jan Dhan Yojana\n2. Women Entrepreneurship Scheme\n3. Back to Main Menu",
+        "3": "UPI Guide:\n- How to set up UPI\n- Secure your transactions\n- List of supported banks\n0. Back",
+        "4": "Thank you for using Rural Rise!"
+    }
 
-    # Financial Literacy
-    elif user_input == "1":
-        user_ref.update({"last_menu_accessed": "Financial Literacy"})
-        return ("Financial Literacy Topics:\n"
-                "1. Saving Money\n"
-                "2. Budgeting\n"
-                "3. Digital Banking\n"
-                "4. Back to Main Menu")
+    # Get response based on input
+    response = menu_options.get(user_input, "Invalid choice. Please try again.")
 
-    elif user_input == "1*1":
-        user_ref.update({"last_menu_accessed": "Saving Money"})
-        return ("Saving Money Tips:\n"
-                "- Save 20% of income\n"
-                "- Invest in low-risk savings\n"
-                "0. Back")
+    # Log user activity
+    activity_data = {
+        "timestamp": datetime.utcnow().isoformat(),  # Current UTC time
+        "user_input": user_input,
+        "menu_displayed": response
+    }
 
-    elif user_input == "1*2":
-        user_ref.update({"last_menu_accessed": "Budgeting"})
-        return ("Budgeting Tips:\n"
-                "- Track expenses\n"
-                "- Use 50-30-20 rule\n"
-                "0. Back")
+    # Update Firestore to append the activity
+    user_ref.update({
+    "activity_log": ArrayUnion([activity_data])  # ✅ Correct way to append data in Firestore
+})
 
-    # Government Aid
-    elif user_input == "2":
-        user_ref.update({"last_menu_accessed": "Government Aid"})
-        return ("Govt Aid Programs:\n"
-                "1. PM Jan Dhan Yojana\n"
-                "2. Women Entrepreneurship Scheme\n"
-                "3. Agri Loan Assistance\n"
-                "4. Back to Main Menu")
 
-    # UPI Guide
-    elif user_input == "3":
-        user_ref.update({"last_menu_accessed": "UPI Guide"})
-        return ("UPI Guide:\n"
-                "- How to set up UPI\n"
-                "- Secure your transactions\n"
-                "- List of supported banks\n"
-                "0. Back")
-
-    # Navigation Options
-    elif user_input == "4" or user_input == "0":
-        return "Returning to Main Menu.\n1. Financial Literacy\n2. Govt Aid\n3. UPI Guide\n4. Exit"
-
-    # Exit Option
-    elif user_input == "4":
-        user_ref.update({"last_menu_accessed": "Exited"})
-        return "Thank you for using Rural Rise!"
-
-    else:
-        return "Invalid choice. Please try again."
+    return response
